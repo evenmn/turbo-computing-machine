@@ -3,10 +3,11 @@ class Integrator:
     """
     Integrator base class
     """
-    def __init__(self, dt, forcefield):
+    def __init__(self, dt):
         self.dt = dt
-        self.forcefield = forcefield
 
+    def set_forcefield(self, forcefield):
+        self.forcefield = forcefield
 
 class Euler(Integrator):
     """
@@ -17,8 +18,8 @@ class Euler(Integrator):
         v_ = v + a * self.dt
         #r_ = self.boundary.check_position(r_)
         #v_ = self.boundary.check_velocity(v_)
-        a_ = self.forcefield.eval_acc(r_)
-        return r_, v_, a_
+        a_, u = self.forcefield.eval_acc_energy(r_)
+        return r_, v_, a_, u
 
 
 class EulerCromer(Integrator):
@@ -30,8 +31,8 @@ class EulerCromer(Integrator):
         r_ = r + v_ * self.dt
         #r_ = self.boundary.check_position(r_)
         #v_ = self.boundary.check_velocity(v_)
-        a_ = self.forcefield.eval_acc(r_)
-        return r_, v_, a_
+        a_, u = self.forcefield.eval_acc_energy(r_)
+        return r_, v_, a_, u
 
 
 class VelocityVerlet(Integrator):
@@ -41,7 +42,7 @@ class VelocityVerlet(Integrator):
     def __call__(self, r, v, a):
         r_ = r + v * self.dt + 0.5 * a * self.dt**2
         #r_ = self.boundary.check_position(r_)
-        a_ = self.forcefield.eval_acc(r_)
+        a_, u = self.forcefield.eval_acc_energy(r_)
         v_ = v + 0.5 * (a_ + a) * self.dt
         #v_ = self.boundary.check_velocity(v_)
-        return r_, v_, a_
+        return r_, v_, a_, u

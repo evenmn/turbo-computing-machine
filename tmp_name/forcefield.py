@@ -41,7 +41,7 @@ class LennardJones:
         distanceSqrdAll, distanceSqrd, dr, indices = self.distance_matrix(r)
         distancePowSixInv = np.nan_to_num(distanceSqrd**(-3))      # 1/r^6
         distancePowTwelveInv = distancePowSixInv**2                # 1/r^12
-        return 4 * (distancePowTwelveInv - distancePowSixInv - self.cutoff_corr)
+        return np.sum(4 * (distancePowTwelveInv - distancePowSixInv - self.cutoff_corr))
 
     def eval_acc(self, r):
         """
@@ -65,3 +65,30 @@ class LennardJones:
         forceMatrix[(index[1], index[0])] = -force
 
         return np.sum(forceMatrix, axis=1)
+
+    def eval_acc_energy(self, r):
+        """
+        Evaluate acceleration and energy
+        """
+        npar = len(r)
+        ndim = len(r[0])
+        distanceSqrdAll, distanceSqrd, dr, indices = self.distance_matrix(r)
+        distancePowSixInv = np.nan_to_num(distanceSqrd**(-3))      # 1/r^6
+        distancePowTwelveInv = distancePowSixInv**2                # 1/r^12
+        
+        factor = np.divide(2 * distancePowTwelveInv - distancePowSixInv, distanceSqrd)            # (2/r^12 - 1/r^6)/r^2
+        factor[factor == np.inf] = 0
+        force = 24 * np.einsum('i,ij->ij', factor, dr)
+
+        # 
+        forceMatrix = np.zeros((npar, npar, ndim))
+        upperTri = np.triu_indices(npar, 1)
+        self.index = np.array(upperTri).T
+        index = self.index[indices].T
+        forceMatrix[(index[0], index[1])] = force
+        forceMatrix[(index[1], index[0])] = -force
+
+        acc = np.sum(forceMatrix, axis=1)
+        energy = np.sum(4 * (distancePowTwelveInv - distancePowSixInv - self.cutoff_corr))
+
+        return acc, energy
