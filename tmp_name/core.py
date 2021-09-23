@@ -34,6 +34,7 @@ class TmpName:
         self.integrator = self.VelocityVerlet(dt=0.01)
         self.integrator.set_forcefield(self.forcefield)
         self.sampler = self.BruteForce(dx=0.01)
+        self.sampler.set_forcefield(self.forcefield)
 
     def set_forcefield(self, forcefield):
         """
@@ -45,6 +46,7 @@ class TmpName:
         self.a, self.u = forcefield.eval_acc_energy(self.r)
         self.forcefield = forcefield
         self.integrator.set_forcefield(self.forcefield)
+        self.sampler.set_forcefield(self.forcefield)
 
     def set_integrator(self, integrator):
         """
@@ -54,6 +56,7 @@ class TmpName:
 
     def set_sampler(self, sampler):
         self.sampler = sampler
+        self.sampler.set_forcefield(self.forcefield)
 
     def set_output(self, style, filename):
         """
@@ -119,7 +122,7 @@ class TmpName:
         """
         naccept = 0
         for self.t in self.iterations(steps, out):
-            r_new = self.sampler.propose_move(self.r)
+            r_new = self.sampler.propose_move(self.r, self.a)
             u_new = self.forcefield.eval_energy(r_new)
             accept = self.sampler.accept_move(self.u, u_new)
             if accept:
