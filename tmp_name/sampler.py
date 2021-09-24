@@ -4,7 +4,7 @@ class Sampler:
     """
     Sampler base class
     """
-    def __init__(self, dx=1.0, stillinger_lim=None):
+    def __init__(self, dx=1.0, stillinger_lim=np.inf):
         self.dx = dx
         self.stillinger_lim = stillinger_lim
 
@@ -12,24 +12,24 @@ class Sampler:
         self.forcefield = forcefield
 
     def propose_move(self, r):
-        npar = len(r)
-        ndim = len(r[0])
-        i = np.random.randint(npar)
+        """
+        Propose new move among the available types of moves
+        """
+        i = np.random.randint(len(r))  # which particle to move
         ai, ui = self.forcefield.eval_acc_energy_par(r, i)
         ri = r[i]
         r[i] += self.get_dr(ai)
 
         # Stillinger cluster criterion
-        if self.stillinger_lim is not None:
-            _, dd = self.forcefield.distance_vector_par(r, i)
-            if np.min(dd, axis=1) > self.stillinger_lim:
-                r[i] = ri
-                self.da = 0
-                self.du = 0
+        _, dd = self.forcefield.distance_vector_par(r, i)
+        if np.min(dd) > self.stillinger_lim:  # reject move
+            r[i] = ri
+            self.da = np.zeros(3)
+            self.du = 0
         else:
             ai_new, ui_new = self.forcefield.eval_acc_energy_par(r, i)
-            self.da = ai - ai_new
-            self.du = ui - ui_new
+            self.da = ai_new - ai
+            self.du = ui_new - ui
         return r
 
     def accept_move(self):
@@ -43,7 +43,7 @@ class BruteForce(Sampler):
     """
     Brute-Force Monte Carlo sampling
     
-    Only translation moves allowed
+    Only translational moves allowed
     """
 
     def get_dr(self, ai):
@@ -60,14 +60,17 @@ class ImportanceSampling(Sampler):
     """
     Metropolis-Hastings algorithm
 
-    Only translation moves allowed
+    Only translational moves allowed
     """
     def __init__(self, Ddt=0.01, **kwargs):
         super().__init__(**kwargs)
         self.Ddt = 0.01
 
     def green_ratio(self):
-        return np.exp(0.5 * self.da * self.eps) + 1
+        """
+        Ratio between new and old Green's function
+        """
+        return np.exp(0.5 * self.da.dot(self.eps)) + 1
 
     def get_dr(self, ai):
         self.eps = self.Ddt * ai + np.random.normal((3,)) * self.dx
@@ -75,7 +78,7 @@ class ImportanceSampling(Sampler):
 
     def get_acceptance_prob(self):
         p = np.exp(self.du)
-        return = p * self.green_ratio()
+        return p * self.green_ratio()
 
 
 class UmbrellaSampling(Sampler):

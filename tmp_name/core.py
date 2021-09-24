@@ -123,13 +123,10 @@ class TmpName:
         naccept = 0
         for self.t in self.iterations(steps, out):
             r_new = self.sampler.propose_move(self.r)
-            u_new = self.forcefield.eval_energy(r_new)
-            accept = self.sampler.accept_move(self.u, u_new)
+            accept = self.sampler.accept_move()
             if accept:
                 self.r = r_new
-                self.u = u_new
-                
-
+                self.u += self.sampler.du
                 naccept += 1
             self.acc_ratio = naccept/(self.t-self.t0+1)
 

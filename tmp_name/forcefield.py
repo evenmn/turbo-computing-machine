@@ -19,13 +19,12 @@ class LennardJones:
         """
         x, y = r[:, np.newaxis, :], r[np.newaxis, :, :]
         dr = x - y                             # distance vector matrix
-        #dr = self.boundary.checkDistance(dr)  # check if satisfy bc
         distanceSqrd = np.einsum('ijk,ijk->ij', dr, dr)    # r^2
         return dr, distanceSqrd
 
     def distance_matrix_triu(self, r):
         """
-        Compute distance between all particles
+        Pick upper triangle of distance matrix
         """
         npar = len(r)
         drAll, distanceSqrdAll = self.distance_matrix(r)
@@ -104,8 +103,9 @@ class LennardJones:
         """
         Find distance between a particle i and all other particles
         """
-        dr = r - r[i]
+        dr = np.delete(r, i, 0) - r[i]
         distanceVector = np.einsum('ij,ij->i', dr, dr)
+
         return dr, distanceVector
 
     def eval_energy_par(self, r, i):
@@ -113,7 +113,7 @@ class LennardJones:
         Evaluate potential energy of particle i
         """
         _, distanceVector = self.distance_vector_par(r, i)
-        distancePowSixInv = np.nan_to_num(distanceSqrd**(-3))
+        distancePowSixInv = distanceSqrd**(-3)
         distancePowTwelveInv = distancePowSixInv**2
         energy = np.sum(4 * (distancePowTwelveInv - distancePowSixInv - self.cutoff_corr))
         return energy
@@ -123,7 +123,7 @@ class LennardJones:
         Evaluate force on particle i
         """
         dr, distanceVectorSqrd = self.distance_vector_par(r, i)
-        distancePowSixInv = np.nan_to_num(distanceVectorSqrd**(-3))
+        distancePowSixInv = distanceVectorSqrd**(-3)
         distancePowTwelveInv = distancePowSixInv**2
         
         factor = np.divide(2 * distancePowTwelveInv - distancePowSixInv, distanceVectorSqrd)
@@ -136,17 +136,15 @@ class LennardJones:
         """
         Evaluate force and energy on particle i
         """
-        dr, distanceVector = self.distance_vector_par(r, i)
-        distancePowSixInv = np.nan_to_num(distanceSqrd**(-3))
+        dr, distanceVectorSqrd = self.distance_vector_par(r, i)
+        distancePowSixInv = distanceVectorSqrd**(-3)
         distancePowTwelveInv = distancePowSixInv**2
 
         energy = np.sum(4 * (distancePowTwelveInv - distancePowSixInv - self.cutoff_corr))
-        
-        factor = np.divide(2 * distancePowTwelveInv - distancePowSixInv, distanceVector)
-        factor[factor == np.inf] = 0
+        factor = np.divide(2 * distancePowTwelveInv - distancePowSixInv, distanceVectorSqrd)
         force = 24 * np.einsum('i,ij->ij', factor, dr)
 
-        return np.sum(force, axis=1), energy
+        return -np.sum(force, axis=0), energy
 
 if __name__ == "__main__":
     r = np.random.random((10, 3))
