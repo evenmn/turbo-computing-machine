@@ -33,7 +33,7 @@ class TmpName:
         self.a, self.u = self.forcefield.eval_acc_energy(self.r)
         self.integrator = self.VelocityVerlet(dt=0.01)
         self.integrator.set_forcefield(self.forcefield)
-        self.sampler = self.BruteForce(dx=0.01)
+        self.sampler = self.BruteForce()
         self.sampler.set_forcefield(self.forcefield)
 
     def set_forcefield(self, forcefield):

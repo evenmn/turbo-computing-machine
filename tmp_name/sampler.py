@@ -4,7 +4,7 @@ class Sampler:
     """
     Sampler base class
     """
-    def __init__(self, dx=1.0, stillinger_lim=np.inf):
+    def __init__(self, dx=0.01, stillinger_lim=np.inf):
         self.dx = dx
         self.stillinger_lim = stillinger_lim
 
@@ -64,21 +64,21 @@ class ImportanceSampling(Sampler):
     """
     def __init__(self, Ddt=0.01, **kwargs):
         super().__init__(**kwargs)
-        self.Ddt = 0.01
-
+        self.Ddt = Ddt
+    
     def green_ratio(self):
         """
         Ratio between new and old Green's function
         """
         return np.exp(0.5 * self.da.dot(self.eps)) + 1
-
+    
     def get_dr(self, ai):
         self.eps = self.Ddt * ai + np.random.normal((3,)) * self.dx
         return self.eps
 
     def get_acceptance_prob(self):
         p = np.exp(self.du)
-        return p * self.green_ratio()
+        return p  * self.green_ratio()
 
 
 class UmbrellaSampling(Sampler):

@@ -3,7 +3,7 @@ class Integrator:
     """
     Integrator base class
     """
-    def __init__(self, dt):
+    def __init__(self, dt=0.01):
         self.dt = dt
 
     def set_forcefield(self, forcefield):
