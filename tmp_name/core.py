@@ -122,7 +122,7 @@ class TmpName:
         """
         naccept = 0
         for self.t in self.iterations(steps, out):
-            r_new = self.sampler.propose_move(self.r, self.a)
+            r_new = self.sampler.propose_move(self.r)
             u_new = self.forcefield.eval_energy(r_new)
             accept = self.sampler.accept_move(self.u, u_new)
             if accept:

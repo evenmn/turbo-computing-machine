@@ -14,7 +14,7 @@ tn.run_md(steps=100)
 tn.snapshot("after_md.xyz")
 
 # run Monte Carlo
-tn.set_sampler(ImportanceSampling())
+tn.set_sampler(ImportanceSampling(dx=1.0, dt=1.0, stillinger_lim=3.0))
 tn.thermo(1, "mc.log", 'step', 'poteng', 'acc_ratio')
 tn.run_mc(steps=1000)
 tn.snapshot("final.xyz")
