@@ -11,7 +11,7 @@ class TmpName:
     from .initvelocity import Zero
     from .forcefield import LennardJones
     from .integrator import VelocityVerlet
-    from .sampler import BruteForce
+    from .sampler import Metropolis
 
     def __init__(self, dir, position, velocity=Zero(), info=False):
         self.p = Path(dir)
@@ -33,8 +33,11 @@ class TmpName:
         self.a, self.u = self.forcefield.eval_acc_energy(self.r)
         self.integrator = self.VelocityVerlet(dt=0.01)
         self.integrator.set_forcefield(self.forcefield)
-        self.sampler = self.BruteForce()
+        self.sampler = self.Metropolis()
         self.sampler.set_forcefield(self.forcefield)
+
+        self.moves = []
+        self.moves_prob = []
 
     def set_forcefield(self, forcefield):
         """
@@ -63,6 +66,13 @@ class TmpName:
         Printing output to file
         """
         self.outputs.append(style)
+
+    def add_move(self, move, probability):
+        """
+        Add move and probability of performing this move
+        """
+        self.moves.append(move)
+        self.moves_prob.append(probability)
 
     def dump(self, freq, file, *quantities):
         """Dump per-atom quantities to file
@@ -109,6 +119,7 @@ class TmpName:
 
     def run_md(self, steps, out="tqdm"):
         """
+        Run Molecular Dynamics simulation
         """
         for self.t in self.iterations(steps, out):
             self.r, self.v, self.a, self.u = self.integrator(self.r, self.v, self.a)
@@ -119,11 +130,14 @@ class TmpName:
 
     def run_mc(self, steps, out="tqdm"):
         """
+        Run Monte Carlo simulation
         """
         naccept = 0
         for self.t in self.iterations(steps, out):
-            r_new = self.sampler.propose_move(self.r)
-            accept = self.sampler.accept_move()
+            # choose move type
+            move = np.random.choice(self.moves, p=self.moves_prob)
+            r_new = self.sampler.propose_move(self.r, move)
+            accept = self.sampler.accept_move(move)
             if accept:
                 self.r = r_new
                 self.u += self.sampler.du

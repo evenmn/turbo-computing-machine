@@ -4,26 +4,25 @@ class Sampler:
     """
     Sampler base class
     """
-    def __init__(self, dx=0.01, stillinger_lim=np.inf):
-        self.dx = dx
+    def __init__(self, stillinger_lim=np.inf):
         self.stillinger_lim = stillinger_lim
 
     def set_forcefield(self, forcefield):
         self.forcefield = forcefield
 
-    def propose_move(self, r):
+    def propose_move(self, r, move):
         """
         Propose new move among the available types of moves
         """
         i = np.random.randint(len(r))  # which particle to move
         ai, ui = self.forcefield.eval_acc_energy_par(r, i)
         ri = r[i]
-        r[i] += self.get_dr(ai)
+        r[i] += move.propose_move(ai)  # self.get_dr(ai)
 
         # Stillinger cluster criterion
         _, dd = self.forcefield.distance_vector_par(r, i)
-        if np.min(dd) > self.stillinger_lim:  # reject move
-            r[i] = ri
+        if np.min(dd) > self.stillinger_lim:  # remove particle from cluster
+            r = np.delete(r, i, 0)
             self.da = np.zeros(3)
             self.du = 0
         else:
@@ -32,28 +31,34 @@ class Sampler:
             self.du = ui_new - ui
         return r
 
-    def accept_move(self):
-        p = self.get_acceptance_prob()
+    def accept_move(self, move):
+        """
+        Decide if move should be accepted or
+        rejected
+        """
+        p = self.get_acceptance_prob(move)
         if p > np.random.normal():
             return True
         return False
 
 
-class BruteForce(Sampler):
+class Metropolis(Sampler):
     """
-    Brute-Force Monte Carlo sampling
-    
-    Only translational moves allowed
+    Metropolis sampling
     """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-    def get_dr(self, ai):
-        """
-        Get position change
-        """
-        return (np.random.random((3,)) - 0.5) * self.dx
+    def get_acceptance_prob(self, move):
+        return move.accept(self.da) * np.exp(self.du)
 
-    def get_acceptance_prob(self):
-        return np.exp(self.du)
+
+class Umbrella(Sampler):
+    def __init__(self):
+        pass
+
+    def get_acceptance(self, move):
+        pass
 
 
 class ImportanceSampling(Sampler):
