@@ -44,7 +44,7 @@ class Sampler:
 
 class Metropolis(Sampler):
     """
-    Metropolis sampling
+    Metropolis sampling, as proposed by Metropolis et al. (1953)
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -54,79 +54,44 @@ class Metropolis(Sampler):
 
 
 class Umbrella(Sampler):
-    def __init__(self):
-        pass
+    """
+    Umbrella Sampling, like proposed by Torrie and Valleau (1977)
+
+    L : int
+        number of windows in each direction (L**3 windows)
+    psi : func { ndarray, int }
+        bias functions, Gaussian by default
+        
+    """
+    def __init__(self, L, psi=None, **kwargs):
+        super().__init__(**kwargs)
+
+        self.L = L
+        c_1d = np.linspace(0, 1, L)
+        c_3d = np.meshgrid(c_1d, c_1d, c_1d)
+        self.cs = np.vstack(map(np.ravel, c_3d))
+        self.k = L - 1
+
+        if psi is None:
+            self.psi = self.gauss
+        else:
+            self.psi = psi
+
+    def gauss(self, r, i):
+        """
+        Define bias functions (umbrellas) as Gaussians
+        """
+        sigma = (r - np.min(r)) / np.max(r)  # shift r to (0, 1)
+        return np.exp(-self.k**2 * (sigma - self.cs[i])**2 / 2.)
+
+    def get_normalization_constants(self, Fij):
+        """
+        Get normalization of bias functions using the overlap
+        matrix. The overlap matrix has to be obtained during
+        sampling.
+        """
+        return np.ones(self.L)
 
     def get_acceptance(self, move):
-        pass
+        return move.accept(self.da) * np.exp(self.du)
 
-
-class ImportanceSampling(Sampler):
-    """
-    Metropolis-Hastings algorithm
-
-    Only translational moves allowed
-    """
-    def __init__(self, Ddt=0.01, **kwargs):
-        super().__init__(**kwargs)
-        self.Ddt = Ddt
-    
-    def green_ratio(self):
-        """
-        Ratio between new and old Green's function
-        """
-        return np.exp(0.5 * self.da.dot(self.eps)) + 1
-    
-    def get_dr(self, ai):
-        self.eps = self.Ddt * ai + np.random.normal((3,)) * self.dx
-        return self.eps
-
-    def get_acceptance_prob(self):
-        p = np.exp(self.du)
-        return p  * self.green_ratio()
-
-
-class UmbrellaSampling(Sampler):
-    """
-    Umbrella sampling is a special case of the
-    Metropolis-Hastings algorithm
-
-    Translational moves only
-    """
-    def __init__(self, Ddt=0.01, **kwargs):
-        super().__init__(**kwargs)
-        self.Ddt = 0.01
-
-    def get_dr(self, ai):
-        pass
-
-    def get_acceptance_prob(self):
-        pass
-
-class AVBMC(UmbrellaSampling):
-    """
-    Aggregate-volume biased Monte Carlo type of moves,
-    sampling technique is Monte Carlo
-    """
-    def __init__(self, ptrans, pswap, **kwargs):
-        super().__init__(**kwargs)
-        assert ptrans + pswap - 1 < 0.01, \
-               "Total probability has to be 1"
-
-    def trans_move(self, ai):
-        pass
-
-    def swap_move(self, ai):
-        pass
-
-    def get_dr(self, ai):
-        if np.random.random() < ptrans:
-            return self.trans_move(ai)
-        else:
-            return self.swap_move(ai)
-
-    def get_acceptance_prob(self):
-        pass
-
-class EBAVBMC(UmbrellaSampling):
-    pass
